@@ -207,7 +207,7 @@ const css=c=>`hsl(${c.h},${c.s}%,${c.l}%)`;
 /* ---------- geometry ---------- */
 const FL={cx:.5,cy:.4,r:.36,hw:.086,top:.968};
 const NECK_JOIN=FL.cy+Math.sqrt(FL.r*FL.r-FL.hw*FL.hw);
-let level=.3,energy=0,flash=0,overflow=0,flowRate=0,streamAmt=0;
+const EMPTY=FL.cy-FL.r;let level=EMPTY,baseCol=[.9,.8,1],energy=0,flash=0,overflow=0,flowRate=0,streamAmt=0;
 let topCols=[[.6,.7,1,0,0,0,0]];
 const scene=$('#scene'),bg=$('#bg'),fg=$('#fg'),fc=$('#fluid');
 const bctx=bg.getContext('2d'),fctx=fg.getContext('2d');
@@ -264,7 +264,7 @@ pres:`uniform sampler2D uP,uDiv;void main(){float C=texture(uP,vUv).x;float L=li
 o=vec4((L+R+B+T-texture(uDiv,vUv).x)*.25,0.,0.,1.);}`,
 grad:`uniform sampler2D uP,uVel;void main(){float C=texture(uP,vUv).x;float L=liquid(vL)>.5?texture(uP,vL).x:C,R=liquid(vR)>.5?texture(uP,vR).x:C,T=liquid(vT)>.5?texture(uP,vT).x:C,B=liquid(vB)>.5?texture(uP,vB).x:C;
 vec2 v=texture(uVel,vUv).xy-vec2(R-L,T-B);o=vec4(v*liquid(vUv),0.,1.);}`,
-display:`uniform sampler2D uDye,uMat;uniform vec2 dyeTexel;uniform float pulse,flash;
+display:`uniform sampler2D uDye,uMat;uniform vec2 dyeTexel;uniform vec3 uBase;uniform float pulse,flash;
 float lum(vec2 q){return dot(texture(uDye,q).rgb,vec3(.3,.59,.11));}
 void main(){vec2 c0=uFlask.xy;vec2 p=vUv;float sd=shapeD(p);
 float edge=1.-smoothstep(-.002,.0012,sd);float sy=surfY(p.x);float below=1.-smoothstep(-.002,.0012,p.y-sy);float m=edge*below;if(m<=0.){o=vec4(0.);return;}
@@ -275,7 +275,7 @@ float ma=texture(uMat,q+vec2(t.x,0.)).a-texture(uMat,q-vec2(t.x,0.)).a,mb=textur
 vec3 n=normalize(vec3(-(gr+vec2(ma,mb)*.6)*7.,1.));vec3 Ld=normalize(vec3(-.5,.65,.9));float diff=dot(n,Ld);float spec=pow(max(dot(reflect(-Ld,n),vec3(0.,0.,1.)),0.),40.);
 float amt=clamp(max(c.r,max(c.g,c.b))*1.25,0.,1.);
 float depth=clamp((sy-p.y)*1.4,0.,1.);
-vec3 w=mix(vec3(.62,.72,.95),vec3(.32,.4,.7),depth);
+vec3 w=mix(uBase*1.02,uBase*.62,depth);
 vec3 col=mix(w,c*(.88+.18*diff)*(1.+pulse*.15),amt)+spec*.35*amt;
 // shimmer: only a soft sheen on the crests
 vec3 irid=.5+.5*cos(6.2832*(vec3(0.,.33,.67)+dot(n.xy,vec2(3.,2.))+uTime*.12+q.y*4.));
@@ -289,7 +289,7 @@ col+=vec3(1.)*step(.996,hash(floor(q*320.)+floor(uTime*6.)))*mt.r*.8;
 col+=vec3(.85,.9,1.)*smoothstep(.006,0.,sy-p.y)*.6;
 float rim=smoothstep(-.06,0.,sd);col*=1.-rim*.25;
 col+=flash*vec3(1.,.95,.85)*.5;
-float a=mix(.16,.94,amt);a=max(a,mt.b*.95);a=max(a,mt.a*.9);a=max(a,smoothstep(.006,0.,sy-p.y)*.5);
+float a=mix(.8,.94,amt);a=max(a,mt.b*.95);a=max(a,mt.a*.9);a=max(a,smoothstep(.006,0.,sy-p.y)*.5);
 o=vec4(col,clamp(a,0.,1.)*m);}`
 };
 let P={},vel,dye,mat,divT,curlT,pres,SIM=160,DYE=768;
@@ -340,7 +340,7 @@ function step(dt){
   run('advect',vel.write,{uVel:vel.read,uSrc:vel.read,velTexel:[st,st],dt,diss:.997},SIM);vel.swap();
   run('advect',dye.write,{uVel:vel.read,uSrc:dye.read,velTexel:[st,st],dt,diss:1},DYE);dye.swap();
   run('advect',mat.write,{uVel:vel.read,uSrc:mat.read,velTexel:[st,st],dt,diss:1},DYE);mat.swap();
-  run('display',null,{uDye:dye.read,uMat:mat.read,dyeTexel:[1/DYE,1/DYE],pulse:energy,flash},DYE);
+  run('display',null,{uDye:dye.read,uMat:mat.read,dyeTexel:[1/DYE,1/DYE],pulse:energy,flash,uBase:baseCol},DYE);
 }
 const rb1=new Float32Array(4*8),rb2=new Float32Array(4*8);let readFail=false,recentCols=[];
 function sampleTop(){
@@ -359,8 +359,8 @@ function sampleTop(){
 
 /* ---------- notes → liquid ---------- */
 const held=new Map();let E=[],lastNoteT=0;
-function injectPoint(spread=.5){const y=Math.max(FL.cy-FL.r+.05,level-.03),half=halfWidthAt(y)*(y>NECK_JOIN?.6:spread);return{x:FL.cx+(Math.random()-.5)*half,y}}
-function addVolume(v){const room=FL.top-level;if(v<=room)level+=v;else{level=FL.top;overflow+=v-room}}
+function injectPoint(spread=.5){const y=Math.max(EMPTY+.006,level-Math.min(.03,(level-EMPTY)*.5)),half=halfWidthAt(y)*(y>NECK_JOIN?.6:spread);return{x:FL.cx+(Math.random()-.5)*half,y}}
+function addVolume(v){if(level>=FL.top){overflow+=v;return}const dl=v*1.1/Math.max(.14,2*halfWidthAt(level+.005)),room=FL.top-level;if(dl<=room)level+=dl;else{level=FL.top;overflow+=(dl-room)*Math.max(.14,2*FL.hw)/1.1}}
 let afterMat=null,afterUntil=0;
 function npsNow(t){return E.filter(e=>t-e.t<2500).length/2.5}
 function noteOn(id,m,vel,legato){
@@ -370,7 +370,7 @@ function noteOn(id,m,vel,legato){
   if(prev)finishHold(id,t);
   const h={m,vel,t0:t,rgb,dens,ang:pc/12*Math.PI*2+(legato?Math.PI*.5:0),slideFrom,flags:{}};held.set(id,h);
   E.push({m,t,vel,legato,id,dur:null});if(E.length>40)E.shift();
-  energy=Math.min(1.6,energy+vel*.55);recentCols.push(rgb);if(recentCols.length>6)recentCols.shift();
+  energy=Math.min(1.6,energy+vel*.55);recentCols.push(rgb);if(recentCols.length>6)recentCols.shift();const bf=level<EMPTY+.02?1:.3;baseCol=baseCol.map((v,i)=>v+(rgb[i]-v)*bf);
   addVolume(.0028*(.4+vel));
   const p=injectPoint(),low=clamp((48-m)/24,0,1);
   const r=.00035+low*.0022+(vel>.9?.0007:0),sp=(16+vel*36)*(1.2-low*.5);
@@ -759,9 +759,9 @@ let drag=null;
 fc.addEventListener('pointerdown',e=>{const r=fc.getBoundingClientRect();drag={x:(e.clientX-r.left)/r.width,y:1-(e.clientY-r.top)/r.height}});
 window.addEventListener('pointermove',e=>{if(!drag)return;const r=fc.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=1-(e.clientY-r.top)/r.height;stir(x,y,(x-drag.x)*1000,(y-drag.y)*1000);drag={x,y}});
 ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,()=>drag=null));
-$('#fill').onclick=()=>{const was=level;level=Math.max(level,FL.top-.008);for(let i=0;i<8;i++){const m=33+Math.floor(Math.random()*14),c=noteColor(m),y=was+(level-was)*(i+.5)/8;splats.push({x:FL.cx+(Math.random()-.5)*halfWidthAt(y),y,r:.003,c:[...hslRgb(c.h,c.s,c.l),clamp((40-m)/14,-1,1)*.9],amt:.9,v:[(Math.random()-.5)*40,(Math.random()-.5)*40]})}};
+$('#fill').onclick=()=>{const was=level;{const c=noteColor(33+Math.floor(Math.random()*14));if(level<EMPTY+.02)baseCol=hslRgb(c.h,c.s,c.l)}level=Math.max(level,FL.top-.008);for(let i=0;i<8;i++){const m=33+Math.floor(Math.random()*14),c=noteColor(m),y=was+(level-was)*(i+.5)/8;splats.push({x:FL.cx+(Math.random()-.5)*halfWidthAt(y),y,r:.003,c:[...hslRgb(c.h,c.s,c.l),clamp((40-m)/14,-1,1)*.9],amt:.9,v:[(Math.random()-.5)*40,(Math.random()-.5)*40]})}};
 function clearFlask(){if(ok)for(const t of[dye.read,dye.write,mat.read,mat.write,vel.read,vel.write,pres.read,pres.write]){gl.bindFramebuffer(gl.FRAMEBUFFER,t.f);gl.viewport(0,0,t.w,t.h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT)}
-  level=.3;overflow=0;beads=[];falls=[];bubbles=[];pool={vol:0,bands:[]};fx=[];topCols=[[.6,.7,1,0,0,0,0]];recentCols=[]}
+  level=EMPTY;baseCol=[.9,.8,1];overflow=0;beads=[];falls=[];bubbles=[];pool={vol:0,bands:[]};fx=[];topCols=[[.6,.7,1,0,0,0,0]];recentCols=[]}
 $('#pour').onclick=()=>{if(corking||drop)return;stopPlay();clearFlask();brew=null;
   const i=(PALS.indexOf(pal)+1)%PALS.length;pal=PALS[i];store.set('pal',i);buildBoard();banner(pal.name,false,'новая палитра зелья')};
 
@@ -907,9 +907,10 @@ function drawDrop(c,t){if(!drop||t<drop.t0)return;const e=t-drop.t0,s0=NHW*1.5,s
   let y,s=s0,a=1;if(e<600){const p=e/600;y=y0+(y1-y0)*p*p}else{const p=clamp((e-600)/1800,0,1);y=y1+p*BR*.1;s=s0*(1-p*.7);a=1-p}
   c.save();c.globalAlpha=a;c.translate(BX,y);c.rotate(e*.002);c.drawImage(drop.cv,-s/2,-s/2,s,s);c.restore()}
 function dropStep(t){if(!drop||t<drop.t0)return;const e=t-drop.t0;
-  if(e>600&&!drop.melting){drop.melting=true;startPlay(drop.c);splats.push({x:FL.cx,y:FL.cy-FL.r*.55,r:.004,v:[0,-40]})}
-  if(drop.melting&&e<2400&&Math.random()<.6){const cs=drop.c.cols&&drop.c.cols.length?drop.c.cols:[[1,.86,.45]],col=Math.random()<.35?[1,.86,.45]:cs[(Math.random()*cs.length)|0];
-    splats.push({x:FL.cx+(Math.random()-.5)*.06,y:FL.cy-FL.r*.55+(Math.random()-.5)*.04,r:.0012,c:[...col,.3],amt:.6,v:[(Math.random()-.5)*90,(Math.random()-.3)*60]})}
+  if(e>600&&!drop.melting){drop.melting=true;startPlay(drop.c);const c0=(drop.c.cols&&drop.c.cols[0])||[1,.86,.45];baseCol=[1,.86,.45].map((v,i)=>v*.5+c0[i]*.5)}
+  if(drop.melting&&e<2400){addVolume(.0011)}
+  if(drop.melting&&e<2400&&Math.random()<.6){const cs=drop.c.cols&&drop.c.cols.length?drop.c.cols:[[1,.86,.45]],col=Math.random()<.35?[1,.86,.45]:cs[(Math.random()*cs.length)|0],q=injectPoint(.5);
+    splats.push({x:q.x,y:q.y,r:.0012,c:[...col,.3],amt:.6,v:[(Math.random()-.5)*90,(Math.random()-.3)*60]})}
   if(e>2400)drop=null}
 
 /* ---------- playback ---------- */
