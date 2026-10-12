@@ -39,7 +39,7 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
 .now{position:fixed;font-family:var(--f-display);font-size:22px;line-height:1;pointer-events:none;transition:opacity .8s;text-shadow:0 0 14px currentColor;transform:translateX(-50%);white-space:nowrap}
 .now small{display:block;text-align:center;font-family:var(--f-mono);font-size:10.5px;color:var(--muted);margin-top:4px;text-shadow:0 1px 4px #000}
 #banners{position:fixed;inset:0;pointer-events:none;z-index:4}
-.banner{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translate(-50%,0);text-align:center;animation:ban 3.4s ease-out forwards;width:min(92%,520px);text-shadow:0 2px 10px rgba(0,0,0,.7)}
+.banner{position:absolute;left:50%;bottom:calc(var(--banY,14px) + env(safe-area-inset-bottom,0px));transition:bottom .35s;transform:translate(-50%,0);text-align:center;animation:ban 3.4s ease-out forwards;width:min(92%,520px);text-shadow:0 2px 10px rgba(0,0,0,.7)}
 .banner span{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--star)}
 .banner b{display:block;font-family:var(--f-display);font-weight:700;font-size:clamp(22px,4.5vw,34px);line-height:1.1;color:#fff4d6}
 .banner i{display:block;font-style:normal;font-size:12.5px;color:#d9d5f2;margin-top:3px}
@@ -77,6 +77,31 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
 .book p{margin:2px 0 0;font-size:13px;color:var(--muted)}
 .book li.locked p{font-style:italic}
 .book small{display:block;margin-top:4px;font-size:12px;color:var(--fg)}
+/* dock: the playback pill and the cheese shelf, at the bottom (above the virtual bass when it is open) */
+.dock{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5;pointer-events:none;-webkit-app-region:no-drag}
+.dock>*{pointer-events:auto}
+.shelf{position:relative;width:100%;max-height:160px;transition:opacity .35s,transform .35s,max-height .35s}
+.shelf.off{opacity:0;transform:translateY(8px);max-height:0;pointer-events:none}
+.shelf::before{content:"";position:absolute;left:0;right:0;top:70px;height:9px;border-radius:3px;background:linear-gradient(180deg,#5a3d2c,var(--wood));box-shadow:0 4px 10px rgba(0,0,0,.45)}
+.shelfRow{position:relative;display:flex;gap:6px;overflow-x:auto;padding:2px 8px 4px;scrollbar-width:thin}
+.cheese{position:relative;flex:none;width:78px}
+.cheese .play{display:flex;flex-direction:column;align-items:center;gap:0;width:100%;border:0;border-radius:10px;background:none;backdrop-filter:none;padding:0;transition:transform .2s}
+.cheese .play:hover{transform:translateY(-5px)}
+.cheese canvas{display:block;margin-bottom:12px}
+.cheese b{font-size:11px;font-weight:700;line-height:1.25;max-width:78px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:center;text-shadow:0 1px 4px #000}
+.cheese small{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-shadow:0 1px 4px #000}
+.cheese.playing canvas{filter:drop-shadow(0 0 7px var(--star))}
+.cheese.ghost{visibility:hidden}
+.cheese .del{position:absolute;top:0;right:2px;width:22px;height:22px;padding:0;font-size:11px;line-height:1;opacity:0;transition:opacity .2s}
+.cheese:hover .del,.cheese:focus-within .del{opacity:1}
+@media (hover:none){.cheese .del{opacity:.75}}
+.shelfEmpty{position:relative;margin:0;padding:40px 8px 22px;text-align:center;font-size:12.5px;color:var(--muted);text-shadow:0 1px 4px #000}
+.player{position:relative;display:flex;align-items:center;gap:6px;max-width:100%;border:1px solid var(--line);border-radius:999px;background:var(--glass);backdrop-filter:blur(10px);padding:4px 5px 4px 12px;overflow:hidden}
+.player b{flex:1;min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .pTime{font-family:var(--f-mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.player button{padding:4px 10px;font-size:12px;flex:none}
+.player .prog{position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--star)}
+.flyer{position:fixed;z-index:8;pointer-events:none}
 @media (max-width:720px){.bar .title{flex-basis:100%;margin:0 0 2px}.bar button{padding:6px 11px;font-size:12px}}
 @media (prefers-reduced-motion:reduce){.banner{animation:none;opacity:0}}
 </style>
@@ -95,6 +120,7 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
   <span class="title">Басовое космическое сыроварение</span>
   <button id="auto" type="button" aria-pressed="false">Автоигра</button>
   <button id="virt" type="button" aria-pressed="false">Виртуальный бас</button>
+  <button id="corkBtn" type="button" disabled>Закупорить<span class="count" id="recTime"></span></button>
   <button id="bookBtn" type="button">Книга жидкостей<span class="count" id="bookCount">0/17</span></button>
   <button id="fill" type="button">Налить до края</button>
   <button id="pour" type="button">Вылить</button>
@@ -104,6 +130,20 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
   <button id="minBtn" type="button" hidden aria-label="Свернуть">—</button>
   <button id="closeBtn" type="button" hidden aria-label="Закрыть">✕</button>
 </nav>
+
+<div class="dock" id="dock">
+  <div class="player" id="player" hidden>
+    <b id="pName"></b><span class="pTime" id="pTime">0:00</span>
+    <button id="pSpeed" type="button" aria-pressed="false" aria-label="Ускорить вдвое">×2</button>
+    <button id="pRebrew" type="button">Доварить</button>
+    <button id="pStop" type="button">Стоп</button>
+    <i class="prog" id="pProg"></i>
+  </div>
+  <div class="shelf off" id="shelf">
+    <div class="shelfRow" id="shelfRow" role="list" aria-label="Полка с сырами"></div>
+    <p class="shelfEmpty" id="shelfEmpty">Полка пуста. Свари зелье и нажми «Закупорить».</p>
+  </div>
+</div>
 
 <section class="bass" id="bass" hidden>
   <div class="bassHead">
@@ -140,7 +180,7 @@ const mtof=m=>440*Math.pow(2,(m-69)/12);
 const lerpHue=(a,b,f)=>{const d=((b-a+540)%360)-180;return (a+d*f+360)%360};
 function hslRgb(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return[f(0),f(8),f(4)]}
 const rgbCss=(c,a)=>`rgba(${Math.round(clamp(c[0],0,1)*255)},${Math.round(clamp(c[1],0,1)*255)},${Math.round(clamp(c[2],0,1)*255)},${a})`;
-const store={get(k,d){try{const v=localStorage.getItem('sy_'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('sy_'+k,JSON.stringify(v))}catch(e){}}};
+const store={get(k,d){try{const v=localStorage.getItem('sy_'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('sy_'+k,JSON.stringify(v));return true}catch(e){return false}}};
 let force='normal';const FORCE={ghost:.24,normal:.7,slap:.97};
 
 /* ---------- background mode: transparent in the desktop app, night sky in a browser ---------- */
@@ -325,6 +365,7 @@ let afterMat=null,afterUntil=0;
 function npsNow(t){return E.filter(e=>t-e.t<2500).length/2.5}
 function noteOn(id,m,vel,legato){
   const t=performance.now(),c=noteColor(m),rgb=hslRgb(c.h,c.s,c.l),pc=pcOf(m),dens=clamp((40-m)/14,-1,1)*.9;
+  recOn(id,m,vel,legato,t);
   const prev=held.get(id),slideFrom=legato&&prev?prev.slideFrom:m;
   if(prev)finishHold(id,t);
   const h={m,vel,t0:t,rgb,dens,ang:pc/12*Math.PI*2+(legato?Math.PI*.5:0),slideFrom,flags:{}};held.set(id,h);
@@ -344,7 +385,7 @@ function noteOn(id,m,vel,legato){
   lastNoteT=t;
 }
 function finishHold(id,t){const h=held.get(id);if(!h)return;held.delete(id);for(let i=E.length-1;i>=0;i--)if(E[i].id===id&&E[i].dur===null){E[i].dur=t-h.t0;break}}
-function noteOff(id){if(!held.has(id))return;finishHold(id,performance.now());lastNoteT=performance.now();if(!held.size)setTimeout(()=>{if(!held.size)$('#now').style.opacity=0},900)}
+function noteOff(id){if(!held.has(id))return;recOff(id,performance.now());finishHold(id,performance.now());lastNoteT=performance.now();if(!held.size)setTimeout(()=>{if(!held.size)$('#now').style.opacity=0},900)}
 function holdStep(t,dt){
   const hs=[...held.entries()];
   for(const[id,h]of hs){
@@ -386,11 +427,11 @@ const LQ=Object.fromEntries(LIQ.map(x=>[x.id,x]));
 let found=new Set(store.get('book',[]).filter(id=>LQ[id]));
 const lastTrig={};
 function trigger(id,arg){
-  const now=performance.now();if(now-(lastTrig[id]??-1e9)<2500)return;lastTrig[id]=now;
+  const now=performance.now();if(now-(lastTrig[id]??-1e9)<2500)return;lastTrig[id]=now;if(brew&&!play)brew.sp[id]=(brew.sp[id]||0)+1;
   const L0=LQ[id],first=!found.has(id);if(first){found.add(id);store.set('book',[...found]);updBook()}
   DOSE[id](arg);banner(L0.name,first,L0.how);
 }
-function banner(name,first,how){const d=document.createElement('div');d.className='banner';d.innerHTML='<span></span><b></b><i></i>';d.children[0].textContent=first?'новая жидкость в книге':'жидкость';d.children[1].textContent=name;d.children[2].textContent=how;const box=$('#banners');box.innerHTML='';box.append(d);setTimeout(()=>d.remove(),3500)}
+function banner(name,first,how,kicker){const d=document.createElement('div');d.className='banner';d.innerHTML='<span></span><b></b><i></i>';d.children[0].textContent=kicker||(first?'новая жидкость в книге':'жидкость');d.children[1].textContent=name;d.children[2].textContent=how;const box=$('#banners');box.innerHTML='';box.append(d);setTimeout(()=>d.remove(),3500)}
 function burst(x,y,n,rad,m,speed){for(let i=0;i<n;i++){const a=i/n*Math.PI*2+Math.random()*.3,d=rad*(.3+Math.random()*.7),c=noteColor(28+((Math.random()*12)|0));splats.push({x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,r:.00025+Math.random()*.0005,c:[...hslRgb(c.h,c.s,c.l),0],amt:.9,v:[Math.cos(a)*speed,Math.sin(a)*speed],m,mamt:.9})}}
 function lastRgb(){const e=E[E.length-1];if(!e)return[.7,.8,1];const c=noteColor(e.m);return hslRgb(c.h,c.s,c.l)}
 const DOSE={
@@ -580,6 +621,7 @@ function drawInside(c,t){
         c.fillStyle='#ff9fb6';const hx=x+s*.4,hy=sy-s*1.6-Math.sin(age*.004)*s*.2;c.beginPath();c.moveTo(hx,hy+s*.18);c.bezierCurveTo(hx-s*.35,hy-s*.05,hx-s*.2,hy-s*.3,hx,hy-s*.12);c.bezierCurveTo(hx+s*.2,hy-s*.3,hx+s*.35,hy-s*.05,hx,hy+s*.18);c.fill()}
       c.globalAlpha=1}
   }
+  drawFreeze(c,t,sy);drawDrop(c,t);
   for(const b of bubbles){if(b.delay&&t<b.delay)continue;const[x,y]=toPx(b.u+Math.sin(b.v*60+b.ph)*.004,b.v);const g=c.createRadialGradient(x-b.r*.3,y-b.r*.3,0,x,y,b.r*1.4);g.addColorStop(0,'rgba(255,255,255,.75)');g.addColorStop(.6,'rgba(220,235,255,.25)');g.addColorStop(1,'rgba(220,235,255,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,b.r*1.4,0,Math.PI*2);c.fill()}
   c.restore();
 }
@@ -634,6 +676,7 @@ function drawFg(t){
   for(const f of fx){if(f.type!=='smokeRings')continue;const age=t-f.t0;for(let i=0;i<3;i++){const q=(age-i*700)/2300;if(q<=0||q>=1)continue;const y=LIP-q*BR*1.2,x=BX+Math.sin(q*6+i)*BR*.05,rx=BR*(.1+q*.2);
     c.strokeStyle=`rgba(215,205,240,${(1-q)*.6})`;c.lineWidth=BR*.02*(1-q)+1;c.beginPath();c.ellipse(x,y,rx,rx*.33,0,0,Math.PI*2);c.stroke()}}
   for(const p of puffs){c.fillStyle=`rgba(230,228,240,${p.a*.3})`;c.beginPath();c.arc(p.x,p.y,p.r,0,Math.PI*2);c.fill()}
+  drawCork(c,t);
   c.globalCompositeOperation='lighter';
   for(const s of sparks){c.globalAlpha=s.life;drawStar(c,s.x,s.y,2.2*K+1,`hsl(${s.h},90%,82%)`)}
   c.globalAlpha=1;c.globalCompositeOperation='source-over';
@@ -676,7 +719,8 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#book').hidden=tru
 window.addEventListener('keyup',e=>{const k=kp(e.code);if(k)release(k.si,'k'+e.code)});
 function setForce(f){force=f;$$('[data-force]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.force===f))}
 $$('[data-force]').forEach(b=>b.onclick=()=>setForce(b.dataset.force));setForce('normal');
-$('#virt').onclick=()=>{virtOn=!virtOn;$('#virt').setAttribute('aria-pressed',virtOn);$('#bass').hidden=!virtOn;if(virtOn)ac()};
+$('#virt').onclick=()=>{virtOn=!virtOn;$('#virt').setAttribute('aria-pressed',virtOn);$('#bass').hidden=!virtOn;updDock();if(virtOn)ac()};
+function updDock(){$('#dock').style.bottom=virtOn?`calc(${$('#bass').offsetHeight+16}px + env(safe-area-inset-bottom,0px))`:'';placeBanners()}
 
 /* ---------- book ---------- */
 function updBook(){
@@ -693,11 +737,13 @@ $('#book').addEventListener('click',e=>{if(e.target===$('#book'))$('#book').hidd
 /* ---------- controls appear on hover, the rest of the window stays empty ---------- */
 const bar=$('#bar');let barTimer=0,overUI=false;
 function overFlask(x,y){return x>BX-BR*1.3&&x<BX+BR*1.3&&y>LIP-D*.2&&y<BASE+BR*.4}
-function showBar(){bar.classList.remove('off');clearTimeout(barTimer);barTimer=setTimeout(()=>{if(!overUI&&$('#book').hidden)bar.classList.add('off')},2500)}
-bar.addEventListener('pointerenter',()=>{overUI=true;showBar()});bar.addEventListener('pointerleave',()=>{overUI=false;showBar()});
+const shelfEl=$('#shelf');let pinUI=false;
+function placeBanners(){const d=$('#dock'),r=d.getBoundingClientRect(),top=shelfEl.classList.contains('off')&&$('#player').hidden?(virtOn?r.bottom:H):r.top;$('#banners').style.setProperty('--banY',Math.max(14,H-top+10)+'px')}
+function showBar(){bar.classList.remove('off');shelfEl.classList.remove('off');placeBanners();setTimeout(placeBanners,380);clearTimeout(barTimer);barTimer=setTimeout(()=>{if(!overUI&&!pinUI&&$('#book').hidden){bar.classList.add('off');shelfEl.classList.add('off');setTimeout(placeBanners,360)}},2500)}
+for(const el of[bar,shelfEl,$('#player')]){el.addEventListener('pointerenter',()=>{overUI=true;showBar()});el.addEventListener('pointerleave',()=>{overUI=false;showBar()})}
 let clickThrough=null;
 window.addEventListener('mousemove',e=>{
-  const interactive=e.clientY<64||overFlask(e.clientX,e.clientY)||e.target.closest('.bar,.bass,.drawer');
+  const interactive=e.clientY<64||overFlask(e.clientX,e.clientY)||e.target.closest('.bar,.bass,.drawer,.shelf,.player');
   if(interactive)showBar();
   if(APP){const want=!interactive;if(want!==clickThrough){clickThrough=want;APP.setClickThrough(want)}}
 });
@@ -714,8 +760,9 @@ fc.addEventListener('pointerdown',e=>{const r=fc.getBoundingClientRect();drag={x
 window.addEventListener('pointermove',e=>{if(!drag)return;const r=fc.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=1-(e.clientY-r.top)/r.height;stir(x,y,(x-drag.x)*1000,(y-drag.y)*1000);drag={x,y}});
 ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,()=>drag=null));
 $('#fill').onclick=()=>{const was=level;level=Math.max(level,FL.top-.008);for(let i=0;i<8;i++){const m=33+Math.floor(Math.random()*14),c=noteColor(m),y=was+(level-was)*(i+.5)/8;splats.push({x:FL.cx+(Math.random()-.5)*halfWidthAt(y),y,r:.003,c:[...hslRgb(c.h,c.s,c.l),clamp((40-m)/14,-1,1)*.9],amt:.9,v:[(Math.random()-.5)*40,(Math.random()-.5)*40]})}};
-$('#pour').onclick=()=>{if(ok)for(const t of[dye.read,dye.write,mat.read,mat.write,vel.read,vel.write,pres.read,pres.write]){gl.bindFramebuffer(gl.FRAMEBUFFER,t.f);gl.viewport(0,0,t.w,t.h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT)}
-  level=.3;overflow=0;beads=[];falls=[];bubbles=[];pool={vol:0,bands:[]};fx=[];
+function clearFlask(){if(ok)for(const t of[dye.read,dye.write,mat.read,mat.write,vel.read,vel.write,pres.read,pres.write]){gl.bindFramebuffer(gl.FRAMEBUFFER,t.f);gl.viewport(0,0,t.w,t.h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT)}
+  level=.3;overflow=0;beads=[];falls=[];bubbles=[];pool={vol:0,bands:[]};fx=[];topCols=[[.6,.7,1,0,0,0,0]];recentCols=[]}
+$('#pour').onclick=()=>{if(corking||drop)return;stopPlay();clearFlask();brew=null;
   const i=(PALS.indexOf(pal)+1)%PALS.length;pal=PALS[i];store.set('pal',i);buildBoard();banner(pal.name,false,'новая палитра зелья')};
 
 /* ---------- autoplay: a wandering bass line that sometimes shows off ---------- */
@@ -748,14 +795,148 @@ function autoStep(t){
   playAuto(m,vel,len,t);autoNext=t+beat*steps;
 }
 
+/* ---------- recording: every note of the current potion, kept until it is corked or poured out ---------- */
+let brew=null,play=null,corking=null,drop=null;
+const fmt=ms=>{const s=Math.max(0,Math.round(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+// events: [t, key, midi, vel%, legato] for a note, [t, key] for its release
+function recOn(id,m,vel,lg,t){if(play||corking)return;if(!brew)brew={t0:t,ev:[],ids:new Map(),n:0,sp:{}};let k=brew.ids.get(id);if(k===undefined){k=brew.n++;brew.ids.set(id,k)}brew.ev.push([Math.round(t-brew.t0),k,m,Math.round(vel*100),lg?1:0])}
+function recOff(id,t){if(play||!brew)return;const k=brew.ids.get(id);if(k!==undefined)brew.ev.push([Math.round(t-brew.t0),k])}
+
+/* ---------- cheese: pauses become holes, the potion becomes the marbled cut ---------- */
+const WEDGE=[.32,.98];
+const rng=seed=>{let s=seed%2147483646+1;return()=>(s=s*16807%2147483647)/2147483647};
+function pauses(ev){const on=new Set(),gaps=[];let quietAt=null;
+  for(const e of ev){if(e.length>2){if(!on.size&&quietAt!==null&&e[0]-quietAt>=500)gaps.push(e[0]-quietAt);on.add(e[1])}else{on.delete(e[1]);if(!on.size)quietAt=e[0]}}return gaps}
+function makeHoles(gaps,seed){const r=rng(seed),out=[];
+  const sizes=gaps.map(g=>clamp(.06+.045*Math.log2(g/500),.06,.17)).sort((a,b)=>b-a).slice(0,16);
+  for(const hr of sizes)for(let k=0;k<80;k++){const a=r()*Math.PI*2-Math.PI,d=Math.sqrt(r())*(.8-hr),x=Math.cos(a)*d,y=Math.sin(a)*d;
+    if(a>WEDGE[0]-.2&&a<WEDGE[1]+.2)continue;if(out.some(h=>Math.hypot(h[0]-x,h[1]-y)<h[2]+hr+.03))continue;
+    out.push([+x.toFixed(3),+y.toFixed(3),+hr.toFixed(3)]);break}
+  return out}
+function brewCols(ev){const cnt=new Map();for(const e of ev)if(e.length>2)cnt.set(pcOf(e[2]),(cnt.get(pcOf(e[2]))||0)+1);
+  return[...cnt].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([pc])=>{const c=noteColor(36+pc);return hslRgb(c.h,c.s,c.l).map(v=>+v.toFixed(3))})}
+function cheeseBase(x,S){const g=x.createRadialGradient(S*.35,S*.35,S*.05,S/2,S/2,S*.7);g.addColorStop(0,'#fbe6a2');g.addColorStop(1,'#eebd4f');return g}
+// the cut: a square of the potion from the middle of the liquid, laid over pale cheese
+function snapFace(cols){const S=160,cv=document.createElement('canvas');cv.width=cv.height=S;const x=cv.getContext('2d');
+  x.fillStyle=cheeseBase(x,S);x.fillRect(0,0,S,S);
+  let drawn=false;
+  if(ok){const vb=FL.cy-FL.r+.015,h=Math.max(.06,level-.025-vb),vc=vb+h*.55,side=Math.max(.08,Math.min(h,2*halfWidthAt(vc)*.8)),P=fc.width;
+    try{x.globalAlpha=.95;x.drawImage(fc,(FL.cx-side/2)*P,(1-(vc+side/2))*P,side*P,side*P,0,0,S,S);drawn=true}catch(e){}x.globalAlpha=1}
+  if(!drawn){const r=rng(cols.length*977+7);for(let i=0;i<36;i++){const c=cols[i%cols.length]||[1,.85,.45];x.fillStyle=rgbCss(c,.35);x.beginPath();x.ellipse(r()*S,r()*S,8+r()*26,4+r()*12,r()*3,0,Math.PI*2);x.fill()}}
+  x.globalCompositeOperation='soft-light';x.globalAlpha=.35;x.fillStyle='#f3c95a';x.fillRect(0,0,S,S);x.globalCompositeOperation='source-over';x.globalAlpha=1;
+  return cv}
+// a wheel with a wedge cut and pulled out a little, the side showing underneath
+function drawCheese(cv,c,img){const S=cv.width,x=cv.getContext('2d'),R=S*.36,[a0,a1]=WEDGE,am=(a0+a1)/2,ox=S*.47-Math.cos(am)*R*.14,oy=S*.45-Math.sin(am)*R*.14;x.clearRect(0,0,S,S);
+  const part=(cx,cy,from,to)=>{
+    const path=(dx,dy)=>{x.beginPath();x.moveTo(cx+dx,cy+dy);x.arc(cx+dx,cy+dy,R,from,to);x.closePath()};
+    path(S*.02,S*.04);x.fillStyle='#9c5f17';x.fill();
+    x.save();path(0,0);x.clip();x.fillStyle=cheeseBase(x,S);x.fillRect(0,0,S,S);
+    if(img)x.drawImage(img,ox-R,oy-R,R*2,R*2);
+    for(const[hx,hy,hr]of c.holes){const X=ox+hx*R,Y=oy+hy*R,rr=hr*R,g=x.createRadialGradient(X-rr*.25,Y-rr*.3,rr*.1,X,Y,rr);
+      g.addColorStop(0,'rgba(120,76,14,.92)');g.addColorStop(1,'rgba(196,140,40,.9)');x.fillStyle=g;x.beginPath();x.arc(X,Y,rr,0,Math.PI*2);x.fill();
+      x.strokeStyle='rgba(255,246,214,.75)';x.lineWidth=Math.max(1,rr*.16);x.beginPath();x.arc(X,Y,rr*.86,.3,Math.PI*.9);x.stroke()}
+    x.restore();
+    x.lineWidth=S*.04;x.strokeStyle='#d8962c';x.beginPath();x.arc(cx,cy,R-S*.02,from,to);x.stroke();
+    x.lineWidth=Math.max(1,S*.008);x.strokeStyle='rgba(120,70,10,.6)';x.beginPath();x.arc(cx,cy,R-S*.04,from,to);x.stroke();
+    x.strokeStyle='rgba(255,247,220,.85)';x.lineWidth=Math.max(1,S*.012);x.lineJoin='round';x.beginPath();x.moveTo(cx+Math.cos(from)*R,cy+Math.sin(from)*R);x.lineTo(cx,cy);x.lineTo(cx+Math.cos(to)*R,cy+Math.sin(to)*R);x.stroke()};
+  part(ox,oy,a1,a0+Math.PI*2);
+  const d=R*.34,px=ox+Math.cos(am)*d,py=oy+Math.sin(am)*d;x.save();x.translate(px-ox,py-oy);part(ox,oy,a0,a1);x.restore()}
+const faces=new Map();
+function faceOf(c,cb){let f=faces.get(c.id);if(!f){f={img:new Image(),ready:false,cbs:[]};f.img.onload=()=>{f.ready=true;f.cbs.splice(0).forEach(fn=>fn(f.img))};f.img.src=c.face;faces.set(c.id,f)}if(f.ready)cb(f.img);else f.cbs.push(cb)}
+function cheeseCanvas(c,css){const cv=document.createElement('canvas'),px=Math.round(css*Math.min(2,window.devicePixelRatio||1));cv.width=cv.height=px;cv.style.width=cv.style.height=css+'px';
+  drawCheese(cv,c,null);if(c.face)faceOf(c,im=>drawCheese(cv,c,im));return cv}
+
+/* ---------- the shelf ---------- */
+const shelf=store.get('shelf',[]).filter(c=>c&&c.id&&Array.isArray(c.ev)&&c.ev.length);
+function saveShelf(){if(!store.set('shelf',shelf))banner('Полка переполнена',false,'Новый сыр пропадёт после перезапуска. Убери старые сыры.','полка')}
+function renderShelf(hide){const row=$('#shelfRow');row.innerHTML='';$('#shelfEmpty').hidden=shelf.length>0;
+  for(const c of shelf){const it=document.createElement('div');it.className='cheese'+(c.id===hide?' ghost':'')+(play&&play.c===c?' playing':'');it.dataset.id=c.id;it.setAttribute('role','listitem');
+    it.innerHTML='<button type="button" class="play"><b></b><small></small></button><button type="button" class="del" aria-label="Убрать с полки">✕</button>';
+    const pb=it.querySelector('.play');pb.prepend(cheeseCanvas(c,64));pb.querySelector('b').textContent=c.name;pb.querySelector('small').textContent=fmt(c.dur);
+    pb.setAttribute('aria-label','Расплавить и послушать: '+c.name+', '+fmt(c.dur));pb.title=c.name;
+    pb.onclick=()=>meltCheese(c,pb.querySelector('canvas'));
+    it.querySelector('.del').onclick=()=>{if(!confirm('Убрать сыр «'+c.name+'» с полки?'))return;const i=shelf.indexOf(c);if(i>=0)shelf.splice(i,1);if(play&&play.c===c)stopPlay();faces.delete(c.id);saveShelf();renderShelf()};
+    row.append(it)}}
+function markPlaying(){$$('.cheese').forEach(el=>el.classList.toggle('playing',!!play&&play.c.id===el.dataset.id))}
+const rectOf=(x,y,w,h)=>({left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+
+/* ---------- corking: a cork drops in, the potion sets into cheese, the cheese goes to the shelf ---------- */
+function cork(){
+  const t=performance.now();if(!brew||!brew.ev.length||play||corking||drop)return;
+  for(const id of held.keys())recOff(id,t);
+  const ev=brew.ev,end=ev[ev.length-1][0]+700,top=Object.entries(brew.sp).sort((a,b)=>b[1]-a[1])[0];
+  const cols=brewCols(ev),face=snapFace(cols),id=Date.now().toString(36);
+  const c={id,name:pal.name+(top?': '+LQ[top[0]].name.toLowerCase():''),pal:PALS.indexOf(pal),dur:end,ev,holes:makeHoles(pauses(ev),Date.now()),cols,sp:brew.sp,face:face.toDataURL('image/jpeg',.85),synth:true,made:Date.now()};
+  faces.set(id,{img:face,ready:true,cbs:[]});
+  brew=null;corking={t0:t,c,stage:0};pinUI=true;showBar();
+}
+function corkStep(t){if(!corking)return;const k=corking,e=t-k.t0;
+  if(k.stage===0&&e>1500){k.stage=1;clearFlask();
+    shelf.unshift(k.c);saveShelf();renderShelf(k.c.id);$('#shelfRow').scrollLeft=0;
+    const s=BR*1.7,fl=cheeseCanvas(k.c,s);fl.className='flyer';Object.assign(fl.style,rectOf(BX-s/2,BY-s/2,s,s));document.body.append(fl);k.fl=fl;
+    fl.animate([{transform:'scale(.6)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:380,easing:'cubic-bezier(.2,1.5,.4,1)'})}
+  if(k.stage===1&&e>2300){k.stage=2;const tgt=$(`.cheese[data-id="${k.c.id}"] canvas`),r=tgt?tgt.getBoundingClientRect():{left:BX,top:H,width:0,height:0},s=BR*1.7;
+    const an=k.fl.animate([rectOf(BX-s/2,BY-s/2,s,s),rectOf(r.left,r.top,r.width,r.height)],{duration:700,easing:'cubic-bezier(.5,0,.2,1)',fill:'forwards'});
+    an.onfinish=()=>{k.fl.remove();const it=$(`.cheese[data-id="${k.c.id}"]`);if(it)it.classList.remove('ghost');
+      banner(k.c.name,false,'сыр на полке, '+fmt(k.c.dur)+(k.c.holes.length?', дырок: '+k.c.holes.length:''),'готов сыр');corking=null;pinUI=false;showBar()}}
+}
+const easeBounce=p=>{const n=7.5625,d=2.75;return p<1/d?n*p*p:p<2/d?n*(p-=1.5/d)*p+.75:p<2.5/d?n*(p-=2.25/d)*p+.9375:n*(p-=2.625/d)*p+.984375};
+function drawCork(c,t){if(!corking)return;const e=t-corking.t0,h=NHW*1.25,wt=NHW*1.18,wb=NHW*.95,rest=LIP+h*.35;
+  let y=rest,al=1;if(e<450)y=rest-(1-easeBounce(e/450))*D*.3;else if(e>1500){const p=Math.min(1,(e-1500)/400);y=rest-p*D*.15;al=1-p}
+  if(al<=0)return;c.save();c.globalAlpha=al;const top=y-h,g=c.createLinearGradient(BX-wt,0,BX+wt,0);
+  g.addColorStop(0,'#7a4a26');g.addColorStop(.35,'#c8925c');g.addColorStop(1,'#6e4020');
+  c.fillStyle=g;c.beginPath();c.moveTo(BX-wt,top);c.lineTo(BX+wt,top);c.lineTo(BX+wb,y);c.ellipse(BX,y,wb,wb*.17,0,0,Math.PI);c.closePath();c.fill();
+  c.fillStyle='#d6a46f';c.beginPath();c.ellipse(BX,top,wt,wt*.17,0,0,Math.PI*2);c.fill();
+  c.fillStyle='rgba(110,64,30,.5)';for(let i=0;i<7;i++){const a=i*2.4,r=wt*(.2+.6*((i*.37)%1));c.beginPath();c.arc(BX+Math.cos(a)*r,top+Math.sin(a)*r*.17,Math.max(.8,wt*.045),0,Math.PI*2);c.fill()}
+  c.restore()}
+function drawFreeze(c,t,sy){if(!corking)return;const e=t-corking.t0;if(e<350||e>1500)return;
+  const p=clamp((e-350)/900,0,1),a=p*p*(3-2*p);
+  const g=c.createRadialGradient(BX-BR*.3,BY-BR*.2,BR*.1,BX,BY,BR);g.addColorStop(0,`rgba(251,230,162,${a*.9})`);g.addColorStop(1,`rgba(232,180,72,${a*.9})`);
+  c.fillStyle=g;c.fillRect(0,sy-3,W,H);
+  if(p>.5){const hy=(sy+BASE)/2,hh=(BASE-sy)*.38;c.fillStyle=`rgba(150,100,24,${(p-.5)*1.6})`;
+    for(const[hx,hyy,hr]of corking.c.holes){c.beginPath();c.arc(BX+hx*BR*.7,hy+hyy*hh,hr*BR*.35,0,Math.PI*2);c.fill()}}}
+
+/* ---------- melting: the cheese drops into the flask, dissolves, and the recording plays back ---------- */
+function meltCheese(c,fromEl){if(corking||drop)return;stopPlay();ac();
+  clearFlask();brew=null;const pi=(c.pal>=0?c.pal:0)%PALS.length;pal=PALS[pi];store.set('pal',pi);buildBoard();
+  const r=fromEl.getBoundingClientRect(),s=NHW*1.5,fl=cheeseCanvas(c,s*2);fl.className='flyer';document.body.append(fl);
+  const an=fl.animate([rectOf(r.left,r.top,r.width,r.height),rectOf(BX-s/2,LIP-s*.9,s,s)],{duration:650,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
+  drop={t0:Infinity,c,cv:fl,melting:false};
+  an.onfinish=()=>{fl.remove();if(drop&&drop.cv===fl)drop.t0=performance.now()}}
+function drawDrop(c,t){if(!drop||t<drop.t0)return;const e=t-drop.t0,s0=NHW*1.5,sy=toPx(0,level)[1],y0=LIP-s0*.4,y1=Math.min(BASE-BR*.3,sy+BR*.35);
+  let y,s=s0,a=1;if(e<600){const p=e/600;y=y0+(y1-y0)*p*p}else{const p=clamp((e-600)/1800,0,1);y=y1+p*BR*.1;s=s0*(1-p*.7);a=1-p}
+  c.save();c.globalAlpha=a;c.translate(BX,y);c.rotate(e*.002);c.drawImage(drop.cv,-s/2,-s/2,s,s);c.restore()}
+function dropStep(t){if(!drop||t<drop.t0)return;const e=t-drop.t0;
+  if(e>600&&!drop.melting){drop.melting=true;startPlay(drop.c);splats.push({x:FL.cx,y:FL.cy-FL.r*.55,r:.004,v:[0,-40]})}
+  if(drop.melting&&e<2400&&Math.random()<.6){const cs=drop.c.cols&&drop.c.cols.length?drop.c.cols:[[1,.86,.45]],col=Math.random()<.35?[1,.86,.45]:cs[(Math.random()*cs.length)|0];
+    splats.push({x:FL.cx+(Math.random()-.5)*.06,y:FL.cy-FL.r*.55+(Math.random()-.5)*.04,r:.0012,c:[...col,.3],amt:.6,v:[(Math.random()-.5)*90,(Math.random()-.3)*60]})}
+  if(e>2400)drop=null}
+
+/* ---------- playback ---------- */
+function startPlay(c){play={c,pos:0,i:0,speed:1,keys:new Set()};$('#player').hidden=false;$('#pName').textContent=c.name;$('#pSpeed').setAttribute('aria-pressed','false');markPlaying();placeBanners()}
+function playStep(ms){if(!play)return;const p=play,ev=p.c.ev;p.pos+=ms*p.speed;
+  while(p.i<ev.length&&ev[p.i][0]<=p.pos){const e=ev[p.i++],id='r'+e[1];
+    if(e.length>2){const v=e[3]/100,lg=!!e[4],had=voices.has(id);noteOn(id,e[2],v,lg);if(p.c.synth!==false){if(lg&&had)sGlide(id,e[2]);else sStart(id,e[2],v)}p.keys.add(id)}
+    else{noteOff(id);sStop(id);p.keys.delete(id)}}
+  if(p.pos>=p.c.dur)stopPlay()}
+function stopPlay(){if(!play)return;for(const id of play.keys){noteOff(id);sStop(id)}play=null;$('#player').hidden=true;markPlaying();placeBanners()}
+function rebrew(){if(!play)return;const p=play,pos=Math.round(p.pos),ev=p.c.ev.slice(0,p.i),sp=Object.assign({},p.c.sp||{});
+  for(const id of p.keys)ev.push([pos,+id.slice(1)]);stopPlay();
+  brew={t0:performance.now()-pos,ev,ids:new Map(),n:ev.reduce((a,e)=>Math.max(a,e[1]+1),0),sp};
+  banner('Доварить',false,'играй дальше и закупорь новый сыр','варка')}
+$('#pSpeed').onclick=()=>{if(!play)return;play.speed=play.speed===2?1:2;$('#pSpeed').setAttribute('aria-pressed',play.speed===2)};
+$('#pStop').onclick=stopPlay;$('#pRebrew').onclick=rebrew;$('#corkBtn').onclick=cork;
+function updRecUI(t){const cb=$('#corkBtn');cb.disabled=!brew||!brew.ev.length||!!play||!!corking||!!drop;$('#recTime').textContent=brew&&brew.ev.length?fmt(t-brew.t0):'';
+  if(play){$('#pTime').textContent=fmt(play.pos)+' / '+fmt(play.c.dur);$('#pProg').style.width=clamp(play.pos/play.c.dur,0,1)*100+'%'}}
+
 /* ---------- loop ---------- */
-layout();window.addEventListener('resize',layout);
+layout();window.addEventListener('resize',()=>{layout();updDock()});renderShelf();
 if(ok){try{initGL()}catch(e){ok=false;console.error(e)}}
 if(!ok){$('#msg').hidden=false;$('#msg').textContent='Этот компьютер не поддерживает WebGL2 с плавающими текстурами. Обнови видеодрайвер или открой в свежем Chrome или Edge.'}
 let last=performance.now(),frameN=0;
 function frame(t){
-  const dt=Math.min(1/30,(t-last)/1000);last=t;time+=dt;frameN++;
-  autoStep(t);holdStep(t,dt);
+  const raw=Math.min(250,t-last),dt=Math.min(1/30,raw/1000);last=t;time+=dt;frameN++;
+  autoStep(t);playStep(raw);holdStep(t,dt);corkStep(t);dropStep(t);if(frameN%8===0)updRecUI(t);
   energy*=Math.pow(.25,dt);flash*=Math.pow(.02,dt);
   if(frameN%6===0&&level>FL.top-.05)sampleTop();
   emitOverflow(t,dt);stepDrips();stepFx(t);
@@ -767,7 +948,7 @@ function frame(t){
 }
 requestAnimationFrame(frame);
 showBar();
-window.__sy={noteOn,noteOff,press,release,trigger};
+window.__sy={drawCheeseFor:(cv,c)=>{drawCheese(cv,c,null);if(c.face)faceOf(c,im=>drawCheese(cv,c,im))},noteOn,noteOff,press,release,trigger,cork,shelf,meltCheese,stopPlay,get play(){return play},get brew(){return brew}};
 })();
 </script>
 </body>
