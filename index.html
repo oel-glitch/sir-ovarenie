@@ -207,7 +207,7 @@ const css=c=>`hsl(${c.h},${c.s}%,${c.l}%)`;
 /* ---------- geometry ---------- */
 const FL={cx:.5,cy:.4,r:.36,hw:.086,top:.968};
 const NECK_JOIN=FL.cy+Math.sqrt(FL.r*FL.r-FL.hw*FL.hw);
-const EMPTY=FL.cy-FL.r;let level=EMPTY,baseCol=[.9,.8,1],energy=0,flash=0,overflow=0,flowRate=0,streamAmt=0;
+const EMPTY=FL.cy-FL.r;let level=EMPTY,baseCol=[.9,.8,1],pourBoost=0,energy=0,flash=0,overflow=0,flowRate=0,streamAmt=0;
 let topCols=[[.6,.7,1,0,0,0,0]];
 const scene=$('#scene'),bg=$('#bg'),fg=$('#fg'),fc=$('#fluid');
 const bctx=bg.getContext('2d'),fctx=fg.getContext('2d');
@@ -392,7 +392,7 @@ function noteOn(id,m,vel,legato){
   recOn(id,m,vel,legato,t);
   const prev=held.get(id),slideFrom=legato&&prev?prev.slideFrom:m;
   if(prev)finishHold(id,t);
-  const h={m,vel,t0:t,rgb,dens,ang:pc/12*Math.PI*2+(legato?Math.PI*.5:0),slideFrom,flags:{}};held.set(id,h);
+  const h={m,vel,w:(1+vel*2)*K,t0:t,rgb,dens,ang:pc/12*Math.PI*2+(legato?Math.PI*.5:0),slideFrom,flags:{}};held.set(id,h);
   E.push({m,t,vel,legato,id,dur:null});if(E.length>40)E.shift();
   energy=Math.min(1.6,energy+vel*.55);recentCols.push(rgb);if(recentCols.length>6)recentCols.shift();const bf=level<EMPTY+.02?1:.3;baseCol=baseCol.map((v,i)=>v+(rgb[i]-v)*bf);
   addVolume(.0028*(.4+vel));
@@ -402,8 +402,8 @@ function noteOn(id,m,vel,legato){
   const am=t<afterUntil?afterMat:null;
   if(vel<.35)splats.push({x:p.x,y:p.y,r:r*.35,c:[rgb[0]*.85,rgb[1]*.85,rgb[2]*.85,dens*.5],amt:.7,v:[dir[0]*sp*.4,dir[1]*sp*.4],m:am});
   else splats.push({x:p.x,y:p.y,r,c:[...rgb,dens],amt:.95,v:[dir[0]*sp,dir[1]*sp],rv:r*1.6,m:am});
-  if(vel>.9){for(let i=0;i<6;i++){const b=i/6*Math.PI*2;splats.push({x:p.x+Math.cos(b)*.018,y:p.y+Math.sin(b)*.018,r:.0004,c:[...rgb.map(x=>Math.min(1,x*1.1)),dens],amt:.8,v:[Math.cos(b)*70,Math.sin(b)*70]})}sparkle(BX,toPx(0,level)[1],c.h,10)}
-  fallers.push({x:BX+(Math.random()-.5)*NHW*.5,y:LIP-D*.12,vy:9*K,c:rgb,r:2+vel*2});
+  if(vel>.9){for(let i=0;i<6;i++){const b=i/6*Math.PI*2;splats.push({x:p.x+Math.cos(b)*.018,y:p.y+Math.sin(b)*.018,r:.0004,c:[...rgb.map(x=>Math.min(1,x*1.1)),dens],amt:.8,v:[Math.cos(b)*70,Math.sin(b)*70]})}if(level<NECK_JOIN-.03)sparkle(BX,surfPx(),c.h,10)}
+  fallers.push({x:BX+(Math.random()-.5)*NHW*.3,y:LIP-D*.12,vy:(8+vel*6)*K,c:rgb,r:(.6+vel*3.4)*K+.4,len:(10+vel*28)*K});
   checkChord();checkSeq(t);
   const nn=$('#now');nn.textContent=noteName(m);const sm=document.createElement('small');sm.textContent=vel>.88?'слэп':vel<.35?'гост':legato?'легато':Math.round(mtof(m))+' Гц';nn.append(sm);nn.style.color=css(c);nn.style.opacity=1;
   lastNoteT=t;
@@ -414,7 +414,7 @@ function holdStep(t,dt){
   const hs=[...held.entries()];
   for(const[id,h]of hs){
     const el=(t-h.t0)/1000;if(el<.12)continue;
-    h.ang+=dt*(1.1+h.vel);addVolume(dt*.004);
+    h.ang+=dt*(1.1+h.vel);h.w+=(K*(1+h.vel*3.6)*(1+Math.min(1,el/1.5)*.9)*(1+pourBoost*.8)-h.w)*Math.min(1,dt*6);addVolume(dt*.0016*h.w/K);
     const p=injectPoint(),low=clamp((48-h.m)/24,0,1);
     const glowing=h.flags.glow?[0,.8,0,0]:(t<afterUntil?afterMat:null);
     splats.push({x:p.x,y:p.y,r:.0003+low*.0011,c:[...h.rgb,h.dens],amt:.12,v:[Math.cos(h.ang)*(10+low*8),Math.sin(h.ang)*(10+low*8)-4],rv:.002+low*.003,m:glowing,mamt:.2});
@@ -453,7 +453,7 @@ const lastTrig={};
 function trigger(id,arg){
   const now=performance.now();if(now-(lastTrig[id]??-1e9)<2500)return;lastTrig[id]=now;if(brew&&!play)brew.sp[id]=(brew.sp[id]||0)+1;
   const L0=LQ[id],first=!found.has(id);if(first){found.add(id);store.set('book',[...found]);updBook()}
-  DOSE[id](arg);banner(L0.name,first,L0.how);
+  DOSE[id](arg);banner(L0.name,first,L0.how);pourBoost=1;fallers.push({x:BX,y:LIP-D*.14,vy:11*K,c:lastRgb(),r:(5+Math.random()*2)*K,len:D*.22});
 }
 function banner(name,first,how,kicker){const d=document.createElement('div');d.className='banner';d.innerHTML='<span></span><b></b><i></i>';d.children[0].textContent=kicker||(first?'новая жидкость в книге':'жидкость');d.children[1].textContent=name;d.children[2].textContent=how;const box=$('#banners');box.innerHTML='';box.append(d);setTimeout(()=>d.remove(),3500)}
 function burst(x,y,n,rad,m,speed){for(let i=0;i<n;i++){const a=i/n*Math.PI*2+Math.random()*.3,d=rad*(.3+Math.random()*.7),c=noteColor(28+((Math.random()*12)|0));splats.push({x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,r:.00025+Math.random()*.0005,c:[...hslRgb(c.h,c.s,c.l),0],amt:.9,v:[Math.cos(a)*speed,Math.sin(a)*speed],m,mamt:.9})}}
@@ -521,7 +521,7 @@ function flaskSDF(x,y){
 // pool: concentric colour bands, newest in the middle; nothing is averaged into mud
 let pool={vol:0,bands:[]};
 function poolAdd(v,c){pool.vol+=v;const b=pool.bands[pool.bands.length-1];if(b&&Math.hypot(b.c[0]-c[0],b.c[1]-c[1],b.c[2]-c[2])<.18)b.v+=v;else{pool.bands.push({c:c.slice(0,3),v});if(pool.bands.length>9){const o=pool.bands.shift();pool.bands[0].v+=o.v}}}
-let landR=0;const poolRx=()=>Math.max(BR*(.55+Math.min(1.1,Math.sqrt(pool.vol)*.9)),landR*streamAmt);
+const poolRx=()=>BR*(.55+Math.min(1.1,Math.sqrt(pool.vol)*.9));
 function emitOverflow(t,dt){
   const intense=energy>1.05||npsNow(t)>3.6;
   const inRate=overflow>0?Math.min(1,overflow*150):0;
@@ -552,13 +552,27 @@ function stepDrips(){
   falls=falls.filter(f=>!f.dead);
   for(const s of spray){s.vy+=.08*K;s.x+=s.vx;s.y+=s.vy;s.life-=.035}spray=spray.filter(s=>s.life>0);
   for(const r of ripples)r.life-=.012;ripples=ripples.filter(r=>r.life>0);
-  for(const f of fallers)f.y+=f.vy;fallers=fallers.filter(f=>f.y<surfPx());
+  for(const f of fallers)f.y+=f.vy;fallers=fallers.filter(f=>f.y-f.len<surfPx());
 }
-function streamPath(side){
-  const x0=BX+side*(NHW+G+FLARE),y0=LIP,g=.16*K,poolY=BASE+2;
-  const tB=Math.sqrt(2*Math.max(1,BY-y0)/g),vx=side*Math.max(.6*K,(BR*1.08-NHW-G-FLARE)/tB),vy=-.35*K;
-  const pts=[];let x=x0,y=y0,v=vy;for(let i=0;i<400&&y<poolY;i++){pts.push([x,y]);x+=vx;v+=g;y+=v}pts.push([x,poolY]);return pts;
-}
+// rivulets running down the outside of the glass, spread around the axis so they turn with the flask
+const RIVS=[-2.75,-1.8,-1.12,-.28,.5,1.15,2.02,2.55].map((a,i)=>({a,w:.55+((i*37)%10)/12,ph:i*1.7,rank:(i*5)%8,fq:9+((i*7)%5)*2.5,amp:.05+((i*3)%4)*.03,end:.5+((i*3)%5)*.09,on:0,head:0}));
+function rivPath(rv){const Rg=FL.r+G*1.1/D,rn=FL.hw+G*1.1/D,yTop=FL.top-FL.cy-.006,yj=Math.sqrt(Math.max(0,Rg*Rg-rn*rn)),yEnd=-Rg*rv.end,pts=[];
+  for(let i=0;i<=8;i++)pts.push([rn,yTop+(yj-yTop)*i/8]);
+  for(let i=1;i<=24;i++){const y=yj+(yEnd-yj)*i/24;pts.push([Math.sqrt(Math.max(0,Rg*Rg-y*y)),y])}
+  return pts.map(([r,y])=>{const a=rv.a+Math.sin(y*rv.fq+rv.ph)*rv.amp;return proj3(Math.sin(a)*r,y,Math.cos(a)*r)})}
+function stepRivulets(dt){const want=streamAmt*RIVS.length*(.55+flowRate*.45);
+  for(const rv of RIVS){const act=rv.rank<want;rv.on+=((act?1:0)-rv.on)*Math.min(1,dt*(act?3:.8));rv.head=act?Math.min(1,rv.head+dt*.8):(rv.on<.05?0:rv.head);
+    if(act&&rv.head>=1&&Math.random()<dt*(2+flowRate*6)){const p=rivPath(rv),e=p[p.length-1],tc=topCols[(Math.random()*topCols.length)|0];falls.push({x:e[0],y:e[1],vx:0,vy:.3*K,r:(1.4+flowRate*1.8)*K,c:tc.slice(0,3)})}}}
+function drawRivulets(c,t){if(streamAmt<.01&&RIVS.every(r=>r.on<.01))return;c.save();c.lineCap='round';c.lineJoin='round';
+  // the brim: potion swelling over the lip
+  const rxo=NHW+G+FLARE*.8,bw=(1.2+3*flowRate)*K*streamAmt;if(bw>.3){c.strokeStyle=rgbCss(topCols[0],.75*Math.min(1,streamAmt*1.5));c.lineWidth=bw;c.beginPath();c.ellipse(BX,LIP,rxo,Math.max(2,rxo*Math.sin(pitch)),0,0,Math.PI*2);c.stroke()}
+  // a thin film of potion over the whole glass while it overflows
+  const film=Math.max(0,...RIVS.map(r=>r.on*r.head))*.12;if(film>.005){c.beginPath();flaskOutline(c,G);c.closePath();c.fillStyle=rgbCss(topCols[0],film);c.fill()}
+  for(const rv of RIVS){if(rv.on<.01||rv.head<=0)continue;const p=rivPath(rv),n=Math.max(2,Math.round((p.length-1)*rv.head)),w0=(1.6+4.6*flowRate)*K*rv.w;
+    for(const pass of[0,1])for(let i=1;i<=n;i++){const z=p[i][2],vis=z>0?1:.28,q=i/(p.length-1),tc=topCols[(i+Math.floor(t*.006))%topCols.length],w=Math.max(.6,w0*(.5+.6*q)*(1+.45*Math.max(0,Math.sin(q*24-t*.007+rv.ph)))*(i===n?1.25:1));
+      c.strokeStyle=pass?rgbCss(tc.slice(0,3).map(v=>Math.min(1,v*1.1+.12)),.85*vis*rv.on):`rgba(10,8,25,${.18*vis*rv.on})`;c.lineWidth=pass?w:w+1.4;c.beginPath();c.moveTo(p[i-1][0],p[i-1][1]);c.lineTo(p[i][0],p[i][1]);c.stroke()}
+    if(p[0][2]>0){c.setLineDash([5*K,14*K]);c.lineDashOffset=-t*.05*(1+flowRate);c.strokeStyle=`rgba(255,255,255,${.5*rv.on})`;c.lineWidth=Math.max(.5,w0*.3);c.beginPath();for(let i=0;i<=n;i++){const x=p[i][0]-w0*.25;i?c.lineTo(x,p[i][1]):c.moveTo(x,p[i][1])}c.stroke();c.setLineDash([])}}
+  c.restore()}
 
 /* ---------- creatures ---------- */
 function drawOtter(c,x,y,s,rot,ph,shell,shade=1){
@@ -695,19 +709,23 @@ function drawFg(t){
     const g=c.createRadialGradient(b.x-b.r*.3,b.y-b.r*.35,0,b.x,b.y,b.r*1.1);g.addColorStop(0,rgbCss(b.c.map(v=>Math.min(1,v+.3)),.9));g.addColorStop(.75,rgbCss(b.c,.6));g.addColorStop(1,rgbCss(b.c.map(v=>v*.5),.7));
     c.fillStyle=g;c.beginPath();c.ellipse(b.x,b.y,b.r*.9,b.r*1.1,0,0,Math.PI*2);c.fill();c.fillStyle='rgba(255,255,255,.9)';c.beginPath();c.arc(b.x-b.r*.32,b.y-b.r*.42,Math.max(.6,b.r*.22),0,Math.PI*2);c.fill()}
   for(const f of falls){c.fillStyle=rgbCss(f.c,.8);c.beginPath();c.ellipse(f.x,f.y,f.r*.8,f.r*1.2,0,0,Math.PI*2);c.fill()}
-  // arcing stream: a thin glossy ribbon with light running along it
-  if(streamAmt>.02){for(const side of[-1,1]){if(side===1&&flowRate<.35)continue;const pts=streamPath(side),n=pts.length,w0=((2.6+flowRate*4)*K+1)*streamAmt;landR=Math.max(landR,Math.abs(pts[n-1][0]-BX)+6*K);
-    for(let i=1;i<n;i++){const a=i/n,tc=topCols[(i+Math.floor(t*.01))%topCols.length];c.strokeStyle=rgbCss(tc,.7*streamAmt);c.lineWidth=Math.max(.8,w0*(1-a*.55));c.beginPath();c.moveTo(pts[i-1][0],pts[i-1][1]);c.lineTo(pts[i][0],pts[i][1]);c.stroke()}
-    c.setLineDash([6*K,18*K]);c.lineDashOffset=-t*.12;c.strokeStyle=`rgba(255,255,255,${.55*streamAmt})`;c.lineWidth=Math.max(.6,w0*.28);c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0]-side*w0*.2,p[1]):c.moveTo(p[0]-side*w0*.2,p[1]));c.stroke();c.setLineDash([]);
-    const end=pts[n-1];if(Math.random()<.5*streamAmt){ripples.push({x:end[0],life:1,s:1});spray.push({x:end[0],y:end[1],vx:(Math.random()-.5)*1.6*K,vy:-(1+Math.random()*1.8)*K,life:1})}}}
+  drawRivulets(c,t);
   c.lineCap='butt';
   drawPool(c,t,'front');
   for(const s of spray){c.fillStyle=`rgba(235,240,255,${s.life*.6})`;c.beginPath();c.arc(s.x,s.y,1.2,0,Math.PI*2);c.fill()}
   // a note falls into the neck; a held note pours a fine thread
-  for(const f of fallers){const gr=c.createLinearGradient(f.x,f.y-f.vy*3,f.x,f.y);gr.addColorStop(0,rgbCss(f.c,0));gr.addColorStop(1,rgbCss(f.c,.9));c.strokeStyle=gr;c.lineWidth=f.r*1.3;c.lineCap='round';c.beginPath();c.moveTo(f.x,f.y-f.vy*3);c.lineTo(f.x,f.y);c.stroke()}
-  for(const h of held.values()){const lv=surfPx(),top=LIP-D*.14;c.lineWidth=1.2+h.vel;c.lineCap='round';
-    const gr=c.createLinearGradient(0,top,0,lv);gr.addColorStop(0,rgbCss(h.rgb,0));gr.addColorStop(.3,rgbCss(h.rgb,.85));gr.addColorStop(1,rgbCss(h.rgb,.95));c.strokeStyle=gr;
-    c.beginPath();for(let k=0;k<=20;k++){const y=top+(lv-top)*k/20,x=BX+Math.sin(time*6+k*.7+h.m)*(1.2+k*.06);k?c.lineTo(x,y):c.moveTo(x,y)}c.stroke()}
+  // a note falls into the neck as a slug of potion, as thick and long as it was struck
+  const lvP=surfPx();
+  for(const f of fallers){const y1=Math.min(f.y,lvP),y0=Math.min(f.y-f.len,y1);if(y1-y0<1)continue;const gr=c.createLinearGradient(0,y0,0,y1);gr.addColorStop(0,rgbCss(f.c,0));gr.addColorStop(.35,rgbCss(f.c,.85));gr.addColorStop(1,rgbCss(f.c,.95));
+    c.strokeStyle=gr;c.lineWidth=f.r*2;c.lineCap='round';c.beginPath();c.moveTo(f.x,y0);c.lineTo(f.x,y1);c.stroke();
+    if(f.r>2*K){c.strokeStyle=`rgba(255,255,255,${.45})`;c.lineWidth=Math.max(.7,f.r*.35);c.beginPath();c.moveTo(f.x-f.r*.4,y0+f.len*.35);c.lineTo(f.x-f.r*.4,y1-f.r);c.stroke()}}
+  // a held note pours a stream: it narrows as it falls, swells with time and with tricks
+  for(const h of held.values()){const lv=lvP,top=LIP-D*.14,n=24,Lp=[],Rp=[];
+    for(let k=0;k<=n;k++){const q=k/n,y=top+(lv-top)*q,cx=BX+Math.sin(time*5+q*4+h.m)*(.6+q*1.6)*K,w=h.w*(1-.38*q)*(1+.07*Math.sin(time*19+q*11+h.m));Lp.push([cx-w,y]);Rp.push([cx+w,y])}
+    const gr=c.createLinearGradient(0,top,0,lv);gr.addColorStop(0,rgbCss(h.rgb,0));gr.addColorStop(.22,rgbCss(h.rgb,.85));gr.addColorStop(1,rgbCss(h.rgb,.95));
+    c.fillStyle=gr;c.beginPath();Lp.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));for(let i=Rp.length-1;i>=0;i--)c.lineTo(Rp[i][0],Rp[i][1]);c.closePath();c.fill();
+    c.strokeStyle='rgba(255,255,255,.4)';c.lineWidth=Math.max(.6,h.w*.25);c.lineCap='round';c.beginPath();for(let i=5;i<=n;i++){const x=Lp[i][0]+(Rp[i][0]-Lp[i][0])*.3;i>5?c.lineTo(x,Lp[i][1]):c.moveTo(x,Lp[i][1])}c.stroke();
+    const sw=h.w*(1.6+.3*Math.sin(time*12));c.fillStyle=rgbCss(h.rgb.map(v=>Math.min(1,v+.25)),.35);c.beginPath();c.ellipse(BX,lv,sw*1.5,sw*1.5*Math.sin(pitch)+1,0,0,Math.PI*2);c.fill()}
   c.lineCap='butt';
   for(const f of fx){if(f.type!=='smokeRings')continue;const age=t-f.t0;for(let i=0;i<3;i++){const q=(age-i*700)/2300;if(q<=0||q>=1)continue;const y=LIP-q*BR*1.2,x=BX+Math.sin(q*6+i)*BR*.05,rx=BR*(.1+q*.2);
     c.strokeStyle=`rgba(215,205,240,${(1-q)*.6})`;c.lineWidth=BR*.02*(1-q)+1;c.beginPath();c.ellipse(x,y,rx,rx*.33,0,0,Math.PI*2);c.stroke()}}
@@ -988,9 +1006,9 @@ function frame(t){
   const raw=Math.min(250,t-last),dt=Math.min(1/30,raw/1000);last=t;time+=dt;frameN++;
   if(!turning){yaw+=yawVel*dt+.07*dt;yawVel*=Math.pow(.2,dt)}LIP=toPx(0,FL.cy+(FL.top-FL.cy)*Math.cos(pitch))[1];
   autoStep(t);playStep(raw);holdStep(t,dt);corkStep(t);dropStep(t);if(frameN%8===0)updRecUI(t);
-  energy*=Math.pow(.25,dt);flash*=Math.pow(.02,dt);
+  energy*=Math.pow(.25,dt);pourBoost*=Math.pow(.15,dt);flash*=Math.pow(.02,dt);
   if(frameN%6===0&&level>FL.top-.05)sampleTop();
-  emitOverflow(t,dt);stepDrips();stepFx(t);
+  emitOverflow(t,dt);stepRivulets(dt);stepDrips();stepFx(t);
   scene.style.transform=t<shakeT?`translate(${(Math.random()-.5)*6}px,${(Math.random()-.5)*6}px)`:'';
   drawBg(t);
   if(ok)step(dt);
