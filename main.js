@@ -3,6 +3,9 @@
 const { app, BrowserWindow, ipcMain, session, screen } = require('electron');
 const path = require('path');
 
+// Колба слушает бас с самого запуска, поэтому звук разрешён без щелчка.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 let win;
 function createWindow() {
   const { workArea } = screen.getPrimaryDisplay();
@@ -14,6 +17,7 @@ function createWindow() {
     transparent: true, frame: false, hasShadow: false, resizable: true,
     backgroundColor: '#00000000',
     title: 'Басовое космическое сыроварение',
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false }
   });
   // Пустые места окна пропускают клики на рабочий стол; колба и панель ловят мышь.
