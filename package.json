@@ -1,7 +1,7 @@
 {
   "name": "basovoe-syrovarenie",
   "productName": "Басовое космическое сыроварение",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Колба на рабочем столе, в которой бас варит зелья и сыры",
   "private": true,
   "license": "UNLICENSED",
@@ -19,10 +19,15 @@
     "files": [
       "index.html",
       "main.js",
-      "preload.js"
+      "preload.js",
+      "icon.png"
     ],
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "icon": "icon.png"
+    },
+    "portable": {
+      "artifactName": "Basovoe-syrovarenie.exe"
     }
   }
 }

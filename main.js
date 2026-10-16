@@ -14,6 +14,7 @@ function createWindow() {
     transparent: true, frame: false, hasShadow: false, resizable: true,
     backgroundColor: '#00000000',
     title: 'Басовое космическое сыроварение',
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false }
   });
   // Пустые места окна пропускают клики на рабочий стол; колба и панель ловят мышь.

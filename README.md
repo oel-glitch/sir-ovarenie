@@ -4,24 +4,25 @@
 
 Подробный план и книга жидкостей — в [PLAN.md](PLAN.md).
 
-## Запуск
+## Скачать готовую программу
 
-Нужен [Node.js](https://nodejs.org/) 20+.
+[Basovoe-syrovarenie.exe](https://github.com/oel-glitch/sir-ovarenie/releases/latest/download/Basovoe-syrovarenie.exe) — один файл для Windows, ничего устанавливать не нужно. Инструкция для того, кто получит программу в подарок: [ИНСТРУКЦИЯ.md](ИНСТРУКЦИЯ.md).
+
+GitHub Actions собирает .exe на каждый пуш в `main` и выкладывает его в [релизы](https://github.com/oel-glitch/sir-ovarenie/releases). Ссылка выше всегда ведёт на последнюю сборку. Собрать вручную можно на вкладке **Actions → build → Run workflow**.
+
+## Собрать на своём ПК
+
+Дважды щёлкнуть `build-windows.bat`. Если Node.js не установлен, откроется nodejs.org: установить версию LTS и запустить файл снова. Готовый `Basovoe-syrovarenie.exe` появится в папке `dist`.
+
+То же из терминала:
 
 ```
 npm install
-npm start
+npm start       # запустить без сборки
+npm run dist    # собрать .exe в папку dist
 ```
 
-`index.html` работает и просто в браузере (без прозрачного окна): его можно открыть двойным щелчком.
-
-## Сборка .exe
-
-```
-npm run dist
-```
-
-Файл появится в папке `dist`. Его же собирает GitHub Actions на каждый пуш в `main`: вкладка **Actions → build → Artifacts → basovoe-syrovarenie-exe**.
+`index.html` работает и просто в браузере, без прозрачного окна.
 
 ## Как пользоваться
 
@@ -44,3 +45,6 @@ npm run dist
 | `main.js` | Electron: прозрачное окно без рамки, автоматическое разрешение на звук и MIDI |
 | `preload.js` | Мост между страницей и окном (сквозные клики, поверх окон, свернуть, закрыть) |
 | `PLAN.md` | План по этапам |
+| `icon.png` | Иконка программы |
+| `build-windows.bat` | Сборка .exe двойным щелчком |
+| `ИНСТРУКЦИЯ.md` | Инструкция для получателя, она же текст релиза |
