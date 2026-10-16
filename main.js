@@ -3,6 +3,9 @@
 const { app, BrowserWindow, ipcMain, session, screen } = require('electron');
 const path = require('path');
 
+// Колба слушает бас с самого запуска, поэтому звук разрешён без щелчка.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 let win;
 function createWindow() {
   const { workArea } = screen.getPrimaryDisplay();
