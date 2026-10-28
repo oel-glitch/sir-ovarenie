@@ -90,6 +90,10 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
 .cents i{position:absolute;top:-4px;left:50%;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:var(--fg);transition:left .1s}
 .tuner small{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .rowBtns{display:flex;flex-wrap:wrap;gap:8px}
+.guide h3{font-family:var(--f-display);font-weight:700;font-size:17px;margin:4px 0 0}
+.guide ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:13.5px}
+.guide li b{color:#fff4d6}
+.guide kbd{font-family:var(--f-mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px}
 /* dock: the playback pill and the cheese shelf, at the bottom (above the virtual bass when it is open) */
 .dock{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5;pointer-events:none;-webkit-app-region:no-drag}
 .dock>*{pointer-events:auto}
@@ -135,6 +139,7 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
   <button id="auto" type="button" aria-pressed="false">Автоигра</button>
   <button id="virt" type="button" aria-pressed="false">Виртуальный бас</button>
   <button id="corkBtn" type="button" disabled>Закупорить<span class="count" id="recTime"></span></button>
+  <button id="guideBtn" type="button" aria-label="Как пользоваться">?</button>
   <button id="bookBtn" type="button">Книга жидкостей<span class="count" id="bookCount">0/17</span></button>
   <button id="fill" type="button">Налить до края</button>
   <button id="pour" type="button">Вылить</button>
@@ -181,6 +186,39 @@ button[aria-pressed="true"]{background:var(--star);color:var(--star-ink);border-
     <div class="rowBtns"><button id="inFind" type="button">Найти бас заново</button><button id="inOff" type="button">Выключить вход</button></div>
     <p class="note" id="midiStatus"></p>
     <p class="note">Программа слушает бас через звуковую карту (Focusrite, Behringer, Steinberg, iRig и другие) или через микрофон и сама ничего не играет: звук идёт из усилителя или наушников, как обычно. Через звук программа слышит одну ноту за раз; аккорды и дабл-стопы ловятся по MIDI и на виртуальном грифе.</p>
+  </div>
+</div>
+
+<div class="drawer" id="guide" hidden>
+  <div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <div class="sheetHead"><h2 id="guideTitle">Как пользоваться</h2><button id="closeGuide" type="button">Понятно</button></div>
+    <p class="note">Каждая сыгранная нота вливается в колбу краской, басовые приёмы варят особые жидкости, а закупоренное зелье застывает в головку сыра. Это окно открывается снова кнопкой «?» в панели.</p>
+    <h3>Бас</h3>
+    <ul>
+      <li>Бас подключается кабелем к звуковой карте (вход Inst или Hi-Z). Без карты программа слушает микрофон компьютера.</li>
+      <li>Вход находится сам: после первой ноты появится «Бас найден», а на кнопке «Бас» в панели загорится <b>зелёная точка</b>.</li>
+      <li>Кнопка «Бас» открывает выбор входа, уровень сигнала и тюнер.</li>
+      <li>Программа сама ничего не играет: бас звучит из усилителя или наушников, как обычно. MIDI подключается само.</li>
+      <li>Если бас не слышно: прибавить Gain на звуковой карте и проверить в Windows «Параметры → Конфиденциальность и защита → Микрофон» — доступ для классических приложений включён.</li>
+    </ul>
+    <h3>Колба</h3>
+    <ul>
+      <li><b>Панель</b> появляется, когда мышь над колбой. За панель колбу можно перетащить по экрану.</li>
+      <li><b>Покрутить</b> колбу — тянуть мышью по ней. <b>Перемешать</b> — то же с Shift или правой кнопкой.</li>
+      <li><b>«Поверх окон»</b> держит колбу над всеми окнами, <b>«Фон»</b> включает ночное небо, <b>«✕»</b> закрывает программу.</li>
+    </ul>
+    <h3>Игра</h3>
+    <ul>
+      <li>Колба начинается пустой. Тихая нота льётся ниткой, сильная — струёй, слэп брызжет искрами.</li>
+      <li>Приёмы варят 17 особых жидкостей: слэп-октавы, слайды, трели, тритон, долгая нижняя Ми… Подсказки — в «Книге жидкостей».</li>
+      <li>Без баса: «Виртуальный бас» (мышь или клавиатура: ряд <kbd>Z</kbd> — Ми, <kbd>A</kbd> — Ля, <kbd>Q</kbd> — Ре, цифры — Соль) или «Автоигра».</li>
+    </ul>
+    <h3>Сыр</h3>
+    <ul>
+      <li><b>«Закупорить»</b> — зелье застывает в сыр с разводами на срезе, паузы в игре становятся дырками. Сыр ложится на полку внизу.</li>
+      <li>Нажатие на сыр — он расплавится в колбе, и сыгранное зазвучит снова. «Доварить» — доиграть поверх и закупорить новый.</li>
+      <li><b>«Вылить»</b> опустошает колбу и меняет цвета.</li>
+    </ul>
   </div>
 </div>
 
@@ -911,7 +949,7 @@ board.addEventListener('pointermove',e=>{const pt=ptrs.get(e.pointerId);if(!pt)r
 ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>board.addEventListener(ev,e=>{const pt=ptrs.get(e.pointerId);if(!pt)return;ptrs.delete(e.pointerId);release(pt.si,'p'+e.pointerId)}));
 const ROWS=[['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0','Minus','Equal'],['KeyQ','KeyW','KeyE','KeyR','KeyT','KeyY','KeyU','KeyI','KeyO','KeyP','BracketLeft','BracketRight'],['KeyA','KeyS','KeyD','KeyF','KeyG','KeyH','KeyJ','KeyK','KeyL','Semicolon','Quote','Backslash'],['KeyZ','KeyX','KeyC','KeyV','KeyB','KeyN','KeyM','Comma','Period','Slash']];
 const kp=code=>{for(let r=0;r<4;r++){const f=ROWS[r].indexOf(code);if(f>=0)return{si:r,f}}return null};
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#book').hidden=true;$('#inSheet').hidden=true;return}if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||!$('#book').hidden||!$('#inSheet').hidden||!virtOn)return;const k=kp(e.code);if(!k)return;e.preventDefault();press(k.si,'k'+e.code,k.f,e.shiftKey?.97:undefined)});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#book').hidden=true;$('#inSheet').hidden=true;if(!$('#guide').hidden){$('#guide').hidden=true;store.set('guided',true)}return}if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||!$('#book').hidden||!$('#inSheet').hidden||!$('#guide').hidden||!virtOn)return;const k=kp(e.code);if(!k)return;e.preventDefault();press(k.si,'k'+e.code,k.f,e.shiftKey?.97:undefined)});
 window.addEventListener('keyup',e=>{const k=kp(e.code);if(k)release(k.si,'k'+e.code)});
 function setForce(f){force=f;$$('[data-force]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.force===f))}
 $$('[data-force]').forEach(b=>b.onclick=()=>setForce(b.dataset.force));setForce('normal');
@@ -928,6 +966,11 @@ function updBook(){
 updBook();
 $('#bookBtn').onclick=()=>{updBook();$('#book').hidden=false;$('#closeBook').focus()};
 $('#closeBook').onclick=()=>$('#book').hidden=true;
+// a short guide: opens by itself on the very first start, and from the "?" button
+function openGuide(){$('#guide').hidden=false;$('#closeGuide').focus()}
+$('#guideBtn').onclick=openGuide;$('#closeGuide').onclick=()=>{$('#guide').hidden=true;store.set('guided',true)};
+$('#guide').addEventListener('click',e=>{if(e.target===$('#guide')){$('#guide').hidden=true;store.set('guided',true)}});
+if(!store.get('guided',false))setTimeout(openGuide,1200);
 $('#book').addEventListener('click',e=>{if(e.target===$('#book'))$('#book').hidden=true});
 
 /* ---------- controls appear on hover, the rest of the window stays empty ---------- */
@@ -935,7 +978,7 @@ const bar=$('#bar');let barTimer=0,overUI=false;
 function overFlask(x,y){return x>BX-BR*1.3&&x<BX+BR*1.3&&y>LIP-D*.2&&y<BASE+BR*.4}
 const shelfEl=$('#shelf');let pinUI=false;
 function placeBanners(){const d=$('#dock'),r=d.getBoundingClientRect(),top=shelfEl.classList.contains('off')&&$('#player').hidden?(virtOn?r.bottom:H):r.top;$('#banners').style.setProperty('--banY',Math.max(14,H-top+10)+'px')}
-function showBar(){bar.classList.remove('off');shelfEl.classList.remove('off');placeBanners();setTimeout(placeBanners,380);clearTimeout(barTimer);barTimer=setTimeout(()=>{if(!overUI&&!pinUI&&$('#book').hidden&&$('#inSheet').hidden){bar.classList.add('off');shelfEl.classList.add('off');setTimeout(placeBanners,360)}},2500)}
+function showBar(){bar.classList.remove('off');shelfEl.classList.remove('off');placeBanners();setTimeout(placeBanners,380);clearTimeout(barTimer);barTimer=setTimeout(()=>{if(!overUI&&!pinUI&&$('#book').hidden&&$('#inSheet').hidden&&$('#guide').hidden){bar.classList.add('off');shelfEl.classList.add('off');setTimeout(placeBanners,360)}},2500)}
 for(const el of[bar,shelfEl,$('#player')]){el.addEventListener('pointerenter',()=>{overUI=true;showBar()});el.addEventListener('pointerleave',()=>{overUI=false;showBar()})}
 let clickThrough=null;
 window.addEventListener('mousemove',e=>{
